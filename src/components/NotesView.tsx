@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase, Business, Note } from '../lib/supabase';
+import { ImageModal } from './ImageModal';
 import {
   ArrowLeft,
   Mic,
@@ -8,7 +9,8 @@ import {
   Trash2,
   Upload,
   Square,
-  Type
+  Type,
+  Camera
 } from 'lucide-react';
 
 interface NotesViewProps {
@@ -25,10 +27,12 @@ export function NotesView({ business, onBack }: NotesViewProps) {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInput, setTextInput] = useState('');
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
   const recognitionRef = useRef<any>(null);
   const fileInputImageRef = useRef<HTMLInputElement>(null);
   const fileInputVideoRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadNotes();
@@ -286,13 +290,23 @@ export function NotesView({ business, onBack }: NotesViewProps) {
             </button>
 
             <button
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={uploadingFile || isRecording || showTextInput}
+              className="flex flex-col items-center gap-3 p-6 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Camera className="w-8 h-8" />
+              <span className="font-semibold">Cámara</span>
+              <span className="text-xs opacity-90">Foto directa</span>
+            </button>
+
+            <button
               onClick={() => fileInputImageRef.current?.click()}
               disabled={uploadingFile || isRecording || showTextInput}
               className="flex flex-col items-center gap-3 p-6 rounded-lg bg-green-600 hover:bg-green-700 text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ImageIcon className="w-8 h-8" />
               <span className="font-semibold">Subir Imagen</span>
-              <span className="text-xs opacity-90">Comprobante</span>
+              <span className="text-xs opacity-90">Archivo</span>
             </button>
 
             <button
@@ -302,9 +316,17 @@ export function NotesView({ business, onBack }: NotesViewProps) {
             >
               <Video className="w-8 h-8" />
               <span className="font-semibold">Subir Video</span>
-              <span className="text-xs opacity-90">Clip de video</span>
+              <span className="text-xs opacity-90">Archivo</span>
             </button>
 
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => handleFileUpload(e, 'image')}
+              className="hidden"
+            />
             <input
               ref={fileInputImageRef}
               type="file"
@@ -398,7 +420,8 @@ export function NotesView({ business, onBack }: NotesViewProps) {
                           <img
                             src={note.content}
                             alt="Comprobante"
-                            className="max-w-full h-auto rounded-lg shadow-md"
+                            onClick={() => setSelectedImageUrl(note.content)}
+                            className="max-w-full h-auto rounded-lg shadow-md cursor-pointer hover:opacity-90 transition"
                           />
                         </div>
                       )}
@@ -431,6 +454,13 @@ export function NotesView({ business, onBack }: NotesViewProps) {
           )}
         </div>
       </div>
+
+      {selectedImageUrl && (
+        <ImageModal
+          imageUrl={selectedImageUrl}
+          onClose={() => setSelectedImageUrl(null)}
+        />
+      )}
     </div>
   );
 }
