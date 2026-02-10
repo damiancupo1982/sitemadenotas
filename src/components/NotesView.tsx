@@ -10,7 +10,10 @@ import {
   Upload,
   Square,
   Type,
-  Camera
+  Camera,
+  Edit2,
+  Save,
+  X
 } from 'lucide-react';
 
 interface NotesViewProps {
@@ -28,6 +31,8 @@ export function NotesView({ business, onBack }: NotesViewProps) {
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
 
   const recognitionRef = useRef<any>(null);
   const fileInputImageRef = useRef<HTMLInputElement>(null);
@@ -224,6 +229,38 @@ export function NotesView({ business, onBack }: NotesViewProps) {
     }
   };
 
+  const startEditingNote = (note: Note) => {
+    setEditingNoteId(note.id);
+    setEditingText(note.content);
+  };
+
+  const cancelEditing = () => {
+    setEditingNoteId(null);
+    setEditingText('');
+  };
+
+  const saveEditedNote = async (noteId: string) => {
+    if (!editingText.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .update({ content: editingText.trim() })
+        .eq('id', noteId);
+
+      if (error) throw error;
+
+      setNotes(notes.map(note =>
+        note.id === noteId ? { ...note, content: editingText.trim() } : note
+      ));
+      setEditingNoteId(null);
+      setEditingText('');
+    } catch (error) {
+      console.error('Error updating note:', error);
+      alert('Error al actualizar la nota');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
@@ -412,7 +449,37 @@ export function NotesView({ business, onBack }: NotesViewProps) {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       {note.type === 'text' && (
-                        <p className="text-slate-700 whitespace-pre-wrap">{note.content}</p>
+                        <>
+                          {editingNoteId === note.id ? (
+                            <div className="space-y-3">
+                              <textarea
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+                                rows={4}
+                                autoFocus
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => saveEditedNote(note.id)}
+                                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                                >
+                                  <Save className="w-4 h-4" />
+                                  Guardar
+                                </button>
+                                <button
+                                  onClick={cancelEditing}
+                                  className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition"
+                                >
+                                  <X className="w-4 h-4" />
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-slate-700 whitespace-pre-wrap">{note.content}</p>
+                          )}
+                        </>
                       )}
 
                       {note.type === 'image' && (
@@ -441,12 +508,24 @@ export function NotesView({ business, onBack }: NotesViewProps) {
                       </p>
                     </div>
 
-                    <button
-                      onClick={() => deleteNote(note)}
-                      className="opacity-0 group-hover:opacity-100 transition p-2 hover:bg-red-50 rounded-lg"
-                    >
-                      <Trash2 className="w-5 h-5 text-red-600" />
-                    </button>
+                    <div className="flex gap-2">
+                      {note.type === 'text' && editingNoteId !== note.id && (
+                        <button
+                          onClick={() => startEditingNote(note)}
+                          className="opacity-0 group-hover:opacity-100 transition p-2 hover:bg-blue-50 rounded-lg"
+                        >
+                          <Edit2 className="w-5 h-5 text-blue-600" />
+                        </button>
+                      )}
+                      {editingNoteId !== note.id && (
+                        <button
+                          onClick={() => deleteNote(note)}
+                          className="opacity-0 group-hover:opacity-100 transition p-2 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 className="w-5 h-5 text-red-600" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
